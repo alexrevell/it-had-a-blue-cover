@@ -4,6 +4,7 @@
   "description": "Search for a book through anything related to it - including the colour of the cover",
   "main": "index.js",
   "dependencies": {
+    "choo": "^3.2.0",
     "xtend": "^4.0.1"
   },
   "devDependencies": {},
