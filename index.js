@@ -38,10 +38,7 @@ const view = (state, prev, send) => {
       <ul>
         ${state.todos.map((todo, i) => html`
           <li>
-            <input type='checkbox' ${todo.completed ? 'checked' : ''} onchange=${ e => {
-              const updates = { completed: e.target.checked }
-              send('updateTodo', { index: i, updates: updates })
-            }} />
+            <input type='checkbox' ${todo.completed ? 'checked' : ''} onchange=${ e => onChange(e, i) } />
             ${todo.title}
           </li>`)}
       </ul>
@@ -53,6 +50,11 @@ const view = (state, prev, send) => {
     send('addTodo', { title: input.value })
     input.value = ''
     e.preventDefault()
+  }
+
+  function onChange(e, index) {
+    const updates = { completed: e.target.checked }
+    send('updateTodo', { index: index, updates: updates })
   }
 }
 
