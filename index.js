@@ -37,9 +37,6 @@ app.model({
         send('receiveNewTodo', todo, done)
       })
     },
-    updateTodo: (data, state) => {
-      return { todos: newTodos }
-    },
     updateTodo: (data, state, send, done) => {
       const oldTodo = state.todos[data.index]
       const newTodo = extend(oldTodo, data.updates)
