@@ -6,43 +6,52 @@ const app = choo()
 
 app.model({
   state: {
-    todos: []
+    items: []
   },
   reducers: {
-    receiveTodos: (data, state) => {
-      return { todos: data }
+    receiveItems: (data, state) => {
+      return { items: data }
     },
-    receiveNewTodo: (data, state) => {
-      const newTodos = state.todos.slice()
-      newTodos.push(data)
-      return { todos: newTodos }
+    receiveNewItem: (data, state) => {
+      const newItems = state.items.slice()
+      newItems.push(data)
+      return { items: newItems }
     },
-    replaceTodo: (data, state) => {
-      const newTodos = state.todos.slice()
-      newTodos[data.index] = data.todo
-      return { todos: newTodos }
+    removeItem: (data, state) => {
+      const newItems = state.items.filter((it, idx) => idx !== data.index)
+      return { items: newItems }
+    },
+    replaceItem: (data, state) => {
+      const newItems = state.items.slice()
+      newItems[data.index] = data.item
+      return { items: newItems }
     },
   },
   effects: {
-    getTodos: (data, state, send, done) => {
-      store.getAll('todos', todos => {
-        send('receiveTodos', todos, done)
+    getItems: (data, state, send, done) => {
+      store.getAll('items', items => {
+        send('receiveItems', items, done)
       })
     },
-    addTodo: (data, state, send, done) => {
-      const todo = extend(data, {
+    addItem: (data, state, send, done) => {
+      const item = extend(data, {
         completed: false
       })
-      store.add('todos', todo, () => {
-        send('receiveNewTodo', todo, done)
+      store.add('items', item, () => {
+        send('receiveNewItem', item, done)
       })
     },
-    updateTodo: (data, state, send, done) => {
-      const oldTodo = state.todos[data.index]
-      const newTodo = extend(oldTodo, data.updates)
+    deleteItem: (data, state, send, done) => {
+      store.remove('items', data.index, () => {
+        send('removeItem', { index: data.index }, done)
+      })
+    },
+    updateItem: (data, state, send, done) => {
+      const oldItem = state.items[data.index]
+      const newItem = extend(oldItem, data.updates)
 
-      store.replace('todos', data.index, newTodo, () => {
-        send('replaceTodo', { index: data.index, todo: newTodo }, done)
+      store.replace('items', data.index, newItem, () => {
+        send('replaceItem', { index: data.index, item: newItem }, done)
       })
     },
   }
@@ -50,17 +59,18 @@ app.model({
 
 const view = (state, prev, send) => {
   return html`
-    <div onload=${() => send('getTodos')}>
+    <div onload=${() => send('getItems')}>
       <h1>It had a blue cover</h1>
       <h2>Search</h2>
       <form onsubmit=${onSubmit}>
         <input type='text' placeholder='Add item' id='title'/>
       </form>
       <ul>
-        ${state.todos.map((todo, i) => html`
+        ${state.items.map((item, i) => html`
           <li>
-            <input type='checkbox' ${todo.completed ? 'checked' : ''} onchange=${ e => onChange(e, i) } />
-            ${todo.title}
+            <input type='checkbox' ${item.completed ? 'checked' : ''} onchange=${ e => onChange(e, i) } />
+            ${item.title}
+            <span onclick=${ e => onDelete(e, i) }>x</span>
           </li>`)}
       </ul>
     </div>`
@@ -68,14 +78,20 @@ const view = (state, prev, send) => {
 
   function onSubmit(e) {
     const input = e.target.children[0]
-    send('addTodo', { title: input.value })
+    send('addItem', { title: input.value })
     input.value = ''
     e.preventDefault()
   }
 
   function onChange(e, index) {
     const updates = { completed: e.target.checked }
-    send('updateTodo', { index: index, updates: updates })
+    send('updateItem', { index: index, updates: updates })
+    e.preventDefault()
+  }
+
+  function onDelete(e, index) {
+    send('deleteItem', { index: index })
+    e.preventDefault()
   }
 }
 
@@ -91,6 +107,13 @@ const store = {
     store.getAll(storeName, items => {
       items.push(item)
       localStorage[storeName] = JSON.stringify(items)
+      cb()
+    })
+  },
+  remove: (storeName, index, cb) => {
+    store.getAll(storeName, items => {
+      const nextItems = items.splice(index, 1)
+      localStorage[storeName] = JSON.stringify(nextItems)
       cb()
     })
   },
