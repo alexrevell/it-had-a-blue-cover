@@ -6,7 +6,8 @@ const app = choo()
 
 app.model({
   state: {
-    items: []
+    items: [],
+    searchBy: [],
   },
   reducers: {
     receiveItems: (data, state) => {
@@ -25,6 +26,10 @@ app.model({
       const newItems = state.items.slice()
       newItems[data.index] = data.item
       return { items: newItems }
+    },
+    receiveSearchBy: (data, state) => {
+      const newSearchBy = data.searchBy
+      return extend(state, { searchBy: newSearchBy })
     },
   },
   effects: {
@@ -54,45 +59,73 @@ app.model({
         send('replaceItem', { index: data.index, item: newItem }, done)
       })
     },
+    updateSearchBy: (data, state, send, done) => {
+      const newSearchBy = data.updates.searchBy
+      send('receiveSearchBy', {searchBy: newSearchBy}, done)
+    },
   }
 })
 
 const view = (state, prev, send) => {
   return html`
-    <div onload=${() => send('getItems')}>
+    <div class="fl w-100 pa2" onload=${() => send('getItems')}>
       <h1>It had a blue cover</h1>
-      <h2>Search</h2>
-      <form onsubmit=${onSubmit}>
-        <input type='text' placeholder='Add item' id='title'/>
-      </form>
-      <ul>
-        ${state.items.map((item, i) => html`
-          <li>
-            <input type='checkbox' ${item.completed ? 'checked' : ''} onchange=${ e => onChange(e, i) } />
-            ${item.title}
-            <span onclick=${ e => onDelete(e, i) }>x</span>
-          </li>`)}
-      </ul>
-    </div>`
+      <div class="fl w-50 pa2">
+        <h2>Add Item</h2>
+        <form onsubmit=${e => onAdd(send, e)}>
+          <input type='text' placeholder='Add item' id='title'/>
+        </form>
+        <ul>
+          ${state.items.map((item, i) => html`
+            <li>
+              <input type='checkbox' ${item.completed ? 'checked' : ''} onchange=${ e => onChange(send, e, i) } />
+              ${item.title}
+              <span onclick=${ e => onDelete(send, e, i) }>x</span>
+            </li>`
+          )}
+        </ul>
+      </div>
+      <div class="fl w-50 pa2">
+        <h2>Search Items</h2>
+        <input oninput=${e => onSearch(send, e)} type='text' placeholder='Find item title' id='search'/>
+        <ul>
+          ${state.items
+            .filter(item => item.title.match(state.searchBy))
+            .map((item, i) => html`
+              <li>
+                <div>
+                  <span class=${item.completed ? "strike" : "b"}>${item.title}</span>
+                </div>
+              </li>`
+            )
+          }
+        </ul>
+      </div>
+    </div>
+  `
+}
 
+function onAdd(send, e) {
+  const input = e.target.children[0]
+  send('addItem', { title: input.value })
+  input.value = ''
+  e.preventDefault()
+}
 
-  function onSubmit(e) {
-    const input = e.target.children[0]
-    send('addItem', { title: input.value })
-    input.value = ''
-    e.preventDefault()
-  }
+function onChange(send, e, index) {
+  const updates = { completed: e.target.checked }
+  send('updateItem', { index: index, updates: updates })
+  e.preventDefault()
+}
 
-  function onChange(e, index) {
-    const updates = { completed: e.target.checked }
-    send('updateItem', { index: index, updates: updates })
-    e.preventDefault()
-  }
+function onDelete(send, e, index) {
+  send('deleteItem', { index: index })
+  e.preventDefault()
+}
 
-  function onDelete(e, index) {
-    send('deleteItem', { index: index })
-    e.preventDefault()
-  }
+function onSearch(send, e) {
+  const updates = { searchBy: e.target.value }
+  send('updateSearchBy', { updates: updates })
 }
 
 const store = {
